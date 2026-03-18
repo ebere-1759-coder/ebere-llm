@@ -115,13 +115,16 @@ export default function EbereLLMPanel({
     setInput("");
     setLoading(true);
 
+    // Keep only the last 6 messages to limit token usage
+    const trimmedHistory = newMessages.slice(-6);
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           system: config.systemPrompt,
-          messages: newMessages,
+          messages: trimmedHistory,
         }),
       });
 
