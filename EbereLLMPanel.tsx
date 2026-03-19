@@ -119,7 +119,7 @@ export default function EbereLLMPanel({
     const trimmedHistory = newMessages.slice(-6);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(config.apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -2,6 +2,10 @@
 // Edit this file freely. Nothing is hardcoded in the component.
 
 export const config = {
+  // ── API ──────────────────────────────────────────────────────────────────
+  // Your Vercel deployment URL — change this after running `vercel deploy`
+  apiUrl: "https://ebere-llm.vercel.app/api/chat",
+
   // ── Header ──────────────────────────────────────────────────────────────
   panelTitle: "EBERE LLM",
   avatarUrl: "https://ebere.design/avatar.jpg", // replace with actual avatar URL
