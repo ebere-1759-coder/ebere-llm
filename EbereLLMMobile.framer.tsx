@@ -1,6 +1,6 @@
 "use client"
 
-import { addPropertyControls, ControlType } from "framer"
+import { addPropertyControls, ControlType, useColorScheme } from "framer"
 import { useState, useRef, useEffect, useCallback } from "react"
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -174,7 +174,9 @@ function useViewportWidth() {
   return width
 }
 
-export default function EbereLLMMobile({ colorScheme = "dark", isOpen = true, onClose }: EbereLLMMobileProps) {
+export default function EbereLLMMobile({ colorScheme: colorSchemeProp = "dark", isOpen = true, onClose }: EbereLLMMobileProps) {
+  const { colorScheme: siteScheme } = useColorScheme()
+  const colorScheme = (siteScheme === "dark" || siteScheme === "light" ? siteScheme : colorSchemeProp)
   const t = tokens[colorScheme]
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
