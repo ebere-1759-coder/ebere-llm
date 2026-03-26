@@ -8,7 +8,7 @@ and get answers via the Anthropic API. Three files total — see structure below
 - `EbereLLMPanel.tsx` — Framer Code Component (React + TypeScript)
 - `ebereLLMConfig.ts` — single source of truth for all content (no hardcoded strings in component)
 - `api/chat.js` — Vercel serverless proxy (keeps API key off the client)
-- Anthropic model: `claude-sonnet-4-5`
+- Anthropic model: `claude-haiku-4-5` (cost-optimised)
 
 ## File structure
 ```
