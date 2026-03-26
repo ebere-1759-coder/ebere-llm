@@ -1,19 +1,15 @@
+"use client"
+
 import { addPropertyControls, ControlType } from "framer"
 import { useState, useRef, useEffect, useCallback } from "react"
 
 // ─────────────────────────────────────────────────────────────────────────
-// ✏️  EDIT THIS SECTION ONLY — everything below is hands-off
+// ✏️  EDIT THIS SECTION ONLY
 // ─────────────────────────────────────────────────────────────────────────
 
 const config = {
-  // Your Vercel deployment URL (from `vercel deploy`)
   apiUrl: "https://ebere-llm.vercel.app/api/chat",
-
-  // Panel header
-  panelTitle: "EBERE LLM",           // e.g. "JANE LLM"
-  avatarUrl: "https://ebere.design/avatar.jpg", // URL to your avatar image
-
-  // Empty state
+  panelTitle: "EBERE LLM",
   greeting: "What do you want to know?",
   suggestedQuestions: [
     "What kind of work does Ebere do?",
@@ -21,33 +17,27 @@ const config = {
     "What's Ebere's design philosophy?",
     "Is Ebere available for new opportunities?",
   ],
-
   inputPlaceholder: "Ask about Ebere...",
-  followUpPrefix: "↳ ",
-
-  // ── Knowledge base ──────────────────────────────────────────────────────
-  // This is injected into every API call. Edit freely — no coding required.
-  // Add sections using ## headings. Keep entries concise (2–4 sentences).
-  systemPrompt: `You are a conversational AI on a portfolio site.
-Your sole purpose is to answer visitor questions about the person described below.
+  systemPrompt: `You are Ebere LLM — a conversational AI on Ebere Ekeledo's portfolio site (ebere.design).
+Your sole purpose is to answer visitor questions about Ebere.
 Be direct, warm, and concise. Never fabricate details not in the knowledge base.
 If asked something outside the knowledge base, say you don't have that information
-and suggest they reach out directly.
+and suggest they reach out to Ebere directly.
 
 --- KNOWLEDGE BASE ---
 
-## Who I am
+## Who Ebere is
 Ebere Ekeledo is a Calgary-based Product Design Lead with 12+ years of experience
 shaping product strategy and building scalable solutions. Currently at Pixel One.
 
-## What I do
-- Lead product design for 0→1 initiatives
-- Build and scale design systems
-- Partner with cross-functional teams to align design with business goals
-- Turn complex problems into products people actually want to use
+## What Ebere does
+- Leads product design for 0→1 initiatives
+- Builds and scales design systems
+- Partners with cross-functional teams to align design with business goals
+- Turns complex problems into products people actually want to use
 
-## My approach
-I see design and engineering as intertwined, not separate. Understanding technical
+## Approach
+Ebere sees design and engineering as intertwined, not separate. Understanding technical
 constraints helps create better solutions. Focus areas: clarity, systems thinking,
 and disciplined execution.
 
@@ -70,11 +60,12 @@ Available for senior design leadership and consulting conversations.
 // 🚫 DO NOT EDIT BELOW THIS LINE
 // ─────────────────────────────────────────────────────────────────────────
 
-// ── Types ─────────────────────────────────────────────────────────────────
+const CTA = "#2E9EC9"
 
 interface Message {
   role: "user" | "assistant"
   content: string
+  isError?: boolean
 }
 
 interface EbereLLMPanelProps {
@@ -83,125 +74,149 @@ interface EbereLLMPanelProps {
   onClose?: () => void
 }
 
-// ── Design tokens ─────────────────────────────────────────────────────────
-
 const tokens = {
   dark: {
-    bgPage: "#121212",
-    bgPanel: "#171717",
-    bgCard: "#2b2b2b",
-    textPrimary: "#ffffff",
-    textSecondary: "#9e9e9e",
-    textHint: "#525252",
-    accent: "rgb(158, 158, 255)",
-    accentGreen: "rgb(25, 230, 114)",
-    border: "rgba(255, 255, 255, 0.08)",
-    orbColor: "rgba(158, 158, 255, 0.5)",
+    bgPage: "#111111",
+    bgPanel: "#1a1a1a",
+    bgElevated: "#222222",
+    bgUserMsg: "#1f1f1f",
+    textPrimary: "#e8e8e8",
+    textSecondary: "#a0a0a0",
+    textHint: "#444444",
+    accentGreen: "rgb(25,230,114)",
+    border: "rgba(255,255,255,0.09)",
+    borderUser: "rgba(255,255,255,0.11)",
+    borderFocus: "rgba(46,158,201,0.45)",
+    errorBg: "rgba(255,80,80,0.07)",
+    errorText: "#ff8f8f",
+    errorBorder: "rgba(255,80,80,0.14)",
   },
   light: {
-    bgPage: "#f7f7f7",
+    bgPage: "#f2f2f2",
     bgPanel: "#ffffff",
-    bgCard: "#e8e8e8",
-    textPrimary: "#000000",
-    textSecondary: "#6e6e6e",
-    textHint: "#9e9e9e",
-    accent: "rgb(0, 0, 238)",
-    accentGreen: "rgb(22, 191, 94)",
-    border: "rgba(0, 0, 0, 0.08)",
-    orbColor: "rgba(0, 0, 238, 0.5)",
+    bgElevated: "#efefef",
+    bgUserMsg: "#ffffff",
+    textPrimary: "#1a1f2e",
+    textSecondary: "#3d4654",
+    textHint: "#b8bcc8",
+    accentGreen: "rgb(22,191,94)",
+    border: "rgba(0,0,0,0.07)",
+    borderUser: "rgba(0,0,0,0.1)",
+    borderFocus: "rgba(46,158,201,0.55)",
+    errorBg: "rgba(220,50,50,0.05)",
+    errorText: "#c0392b",
+    errorBorder: "rgba(220,50,50,0.14)",
   },
 }
 
-// ── Keyframe injection ────────────────────────────────────────────────────
+function ArrowIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} fill="currentColor" viewBox="0 0 256 256">
+      <path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" />
+    </svg>
+  )
+}
+
+function InfoIcon({ color }: { color: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill={color} viewBox="0 0 256 256">
+      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z" />
+    </svg>
+  )
+}
+
+function FollowUpArrow({ color }: { color: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill={color} viewBox="0 0 256 256" style={{ flexShrink: 0, marginTop: 2 }}>
+      <path d="M221.66,181.66l-48,48a8,8,0,0,1-11.32-11.32L196.69,184H72a8,8,0,0,1-8-8V32a8,8,0,0,1,16,0V168H196.69l-34.35-34.34a8,8,0,0,1,11.32-11.32l48,48A8,8,0,0,1,221.66,181.66Z" />
+    </svg>
+  )
+}
+
+function TypingDots() {
+  const dot: React.CSSProperties = { display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: CTA }
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0" }}>
+      <span className="ebere-dot" style={dot} />
+      <span className="ebere-dot ebere-dot-2" style={dot} />
+      <span className="ebere-dot ebere-dot-3" style={dot} />
+    </div>
+  )
+}
 
 const STYLE_ID = "ebere-llm-styles"
-
 function injectStyles() {
   if (typeof document === "undefined") return
   if (document.getElementById(STYLE_ID)) return
   const style = document.createElement("style")
   style.id = STYLE_ID
   style.textContent = `
-    @keyframes eberePulse {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(158,158,255,0.2); }
-      50%       { box-shadow: 0 0 0 3px rgba(158,158,255,0.4); }
-    }
-    @keyframes eberePulseLight {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(0,0,238,0.1); }
-      50%       { box-shadow: 0 0 0 3px rgba(0,0,238,0.25); }
-    }
-    @keyframes ebereFloat {
-      0%   { transform: translate(0px, 0px); }
-      25%  { transform: translate(6px, -8px); }
-      50%  { transform: translate(-4px, -14px); }
-      75%  { transform: translate(-8px, -6px); }
-      100% { transform: translate(0px, 0px); }
-    }
-    @keyframes ebereFadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes ebereFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes ebereDot { 0%,60%,100% { transform:translateY(0); opacity:0.25; } 30% { transform:translateY(-5px); opacity:1; } }
     .ebere-msg { animation: ebereFadeIn 0.25s ease forwards; }
-    .ebere-followup { transition: color 0.2s ease; cursor: pointer; }
+    .ebere-followup { transition: color 0.15s ease; cursor: pointer; user-select: none; }
+    .ebere-dot { animation: ebereDot 1.3s ease-in-out infinite; }
+    .ebere-dot-2 { animation-delay: 0.18s; }
+    .ebere-dot-3 { animation-delay: 0.36s; }
+    .ebere-icon-btn:hover { opacity: 0.7; }
   `
   document.head.appendChild(style)
 }
 
-// ── Component ─────────────────────────────────────────────────────────────
-
-export default function EbereLLMPanel({
-  colorScheme = "dark",
-  isOpen = true,
-  onClose,
-}: EbereLLMPanelProps) {
+export default function EbereLLMPanel({ colorScheme = "dark", isOpen = true, onClose }: EbereLLMPanelProps) {
   const t = tokens[colorScheme]
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [inputFocused, setInputFocused] = useState(false)
   const [hoveredFollowup, setHoveredFollowup] = useState<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { injectStyles() }, [])
-
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, loading])
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, loading])
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = Math.min(el.scrollHeight, 88) + "px"
+  }, [input])
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || loading) return
-
     const newMessages: Message[] = [...messages, { role: "user", content: trimmed }]
     setMessages(newMessages)
     setInput("")
     setLoading(true)
-
-    const trimmedHistory = newMessages.slice(-6)
-
     try {
       const res = await fetch(config.apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system: config.systemPrompt, messages: trimmedHistory }),
+        body: JSON.stringify({ system: config.systemPrompt, messages: newMessages.slice(-6) }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setMessages((prev) => [...prev, { role: "assistant", content: data.text ?? "Sorry, I couldn't get a response." }])
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }])
+      setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", isError: true }])
     } finally {
       setLoading(false)
     }
   }, [messages, loading])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage(input)
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input) }
   }
 
   const reset = () => { setMessages([]); setInput("") }
   const isEmpty = messages.length === 0
+  const canSend = input.trim().length > 0 && !loading
+
+  const iconBtn: React.CSSProperties = {
+    background: "none", border: "none", cursor: "pointer",
+    color: t.textSecondary, padding: 6, display: "flex", alignItems: "center", transition: "opacity 0.15s",
+  }
 
   return (
     <div style={{
@@ -211,63 +226,54 @@ export default function EbereLLMPanel({
       background: t.bgPanel, borderLeft: `1px solid ${t.border}`,
       transform: isOpen ? "translateX(0)" : "translateX(100%)",
       opacity: isOpen ? 1 : 0,
-      transition: "transform 0.3s ease, opacity 0.2s ease",
+      transition: "transform 0.32s cubic-bezier(0.32,0.72,0,1), opacity 0.2s ease",
       zIndex: 9999, overflow: "hidden",
     }}>
 
       {/* Header */}
-      <div style={{
-        height: 48, display: "flex", alignItems: "center",
-        justifyContent: "space-between", padding: "0 16px",
-        background: t.bgPanel, borderBottom: `1px solid ${t.border}`, flexShrink: 0,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img
-            src={config.avatarUrl} alt="Ebere"
-            style={{
-              width: 32, height: 32, borderRadius: "50%", objectFit: "cover",
-              animation: colorScheme === "dark" ? "eberePulse 3s ease-in-out infinite" : "eberePulseLight 3s ease-in-out infinite",
-            }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
-          />
-          <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 12, letterSpacing: "0.08em", color: t.textSecondary, textTransform: "uppercase" }}>
+      <div style={{ height: 52, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 18px", background: t.bgPanel, borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: "0.1em", color: t.textPrimary, textTransform: "uppercase", fontWeight: 600 }}>
             {config.panelTitle}
           </span>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: t.accentGreen, display: "inline-block" }} />
+          <InfoIcon color={t.textHint} />
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: t.accentGreen, display: "inline-block", marginLeft: 2 }} />
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={reset} style={{ background: "none", border: "none", color: t.textHint, fontSize: 18, cursor: "pointer", padding: 4, lineHeight: 1 }}>↺</button>
-          {onClose && <button onClick={onClose} style={{ background: "none", border: "none", color: t.textHint, fontSize: 18, cursor: "pointer", padding: 4, lineHeight: 1 }}>×</button>}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button className="ebere-icon-btn" title="New chat" onClick={reset} style={iconBtn}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+              <path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a80,80,0,1,0,1.68,114,8,8,0,1,1,11.22,11.39A96,96,0,1,1,178.06,62l14.63,14.63V48a8,8,0,0,1,16,0Z" />
+            </svg>
+          </button>
+          {onClose && (
+            <button className="ebere-icon-btn" title="Close" onClick={onClose} style={iconBtn}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Chat area */}
-      <div style={{
-        flex: 1, overflowY: "auto", padding: 24,
-        background: t.bgPage, display: "flex", flexDirection: "column", position: "relative",
-      }}>
-        {/* Ambient orb */}
-        <div style={{
-          position: "absolute", top: 32, right: 32, width: 40, height: 40,
-          borderRadius: "50%", background: t.orbColor, filter: "blur(14px)",
-          pointerEvents: "none", animation: "ebereFloat 8s ease-in-out infinite",
-        }} />
+      <div style={{ flex: 1, overflowY: "auto", padding: "32px 20px 16px", background: t.bgPage, display: "flex", flexDirection: "column", position: "relative" }}>
 
         {/* Empty state */}
         {isEmpty && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-            <p style={{ fontFamily: '"Open Runde", sans-serif', fontSize: 24, fontWeight: 500, letterSpacing: "-1px", color: t.textPrimary, margin: "0 0 20px 0" }}>
+            <p style={{ fontFamily: '"Open Runde", sans-serif', fontSize: 22, fontWeight: 600, letterSpacing: "-0.5px", color: t.textPrimary, margin: "0 0 28px 0", lineHeight: 1.2 }}>
               {config.greeting}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {config.suggestedQuestions.map((q) => (
                 <span key={q} className="ebere-followup"
-                  style={{ fontSize: 14, color: hoveredFollowup === q ? t.textPrimary : t.textSecondary, fontFamily: '"Open Runde", sans-serif' }}
+                  style={{ fontSize: 13, color: hoveredFollowup === q ? t.textPrimary : t.textSecondary, fontFamily: '"Open Runde", sans-serif', lineHeight: 1.5, display: "flex", alignItems: "flex-start", gap: 7 }}
                   onMouseEnter={() => setHoveredFollowup(q)}
                   onMouseLeave={() => setHoveredFollowup(null)}
                   onClick={() => sendMessage(q)}
                 >
-                  <span style={{ color: t.textHint }}>{config.followUpPrefix}</span>{q}
+                  <FollowUpArrow color={hoveredFollowup === q ? CTA : t.textHint} />
+                  {q}
                 </span>
               ))}
             </div>
@@ -276,33 +282,41 @@ export default function EbereLLMPanel({
 
         {/* Messages */}
         {messages.map((msg, i) => (
-          <div key={i} className="ebere-msg" style={{ marginBottom: 20 }}>
+          <div key={i} className="ebere-msg" style={{ marginBottom: 24 }}>
             {msg.role === "user" ? (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <div style={{ background: t.bgCard, borderRadius: 12, padding: "10px 14px", color: t.textPrimary, fontFamily: '"Open Runde", sans-serif', fontSize: 14, maxWidth: "80%", lineHeight: 1.4 }}>
-                  {msg.content}
-                </div>
+              <div style={{ background: t.bgUserMsg, border: `1px solid ${t.borderUser}`, borderRadius: 10, padding: "14px 18px", color: t.textSecondary, fontFamily: '"Open Runde", sans-serif', fontSize: 14, lineHeight: 1.55, width: "100%", boxSizing: "border-box", boxShadow: colorScheme === "light" ? "0 1px 4px rgba(0,0,0,0.05)" : "none" }}>
+                {msg.content}
               </div>
             ) : (
-              <div>
-                <p style={{ color: t.textSecondary, fontFamily: '"Open Runde", sans-serif', fontSize: 16, lineHeight: 1.6, margin: "0 0 12px 0", whiteSpace: "pre-wrap" }}>
-                  {msg.content}
-                </p>
-                {i === messages.length - 1 && !loading && (
+              <div style={{ marginTop: 4 }}>
+                {msg.isError ? (
+                  <div style={{ background: t.errorBg, border: `1px solid ${t.errorBorder}`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>⚠</span>
+                    <p style={{ color: t.errorText, fontFamily: '"Open Runde", sans-serif', fontSize: 13, margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
+                  </div>
+                ) : (
                   <>
-                    <div style={{ height: 1, background: t.border, margin: "16px 0" }} />
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {config.suggestedQuestions.slice(0, 2).map((q) => (
-                        <span key={q} className="ebere-followup"
-                          style={{ fontSize: 14, color: hoveredFollowup === q ? t.textPrimary : t.textSecondary, fontFamily: '"Open Runde", sans-serif' }}
-                          onMouseEnter={() => setHoveredFollowup(q)}
-                          onMouseLeave={() => setHoveredFollowup(null)}
-                          onClick={() => sendMessage(q)}
-                        >
-                          <span style={{ color: t.textHint }}>{config.followUpPrefix}</span>{q}
-                        </span>
-                      ))}
-                    </div>
+                    <p style={{ color: t.textSecondary, fontFamily: '"Open Runde", sans-serif', fontSize: 16, lineHeight: 1.7, margin: "0 0 8px 0", whiteSpace: "pre-wrap" }}>
+                      {msg.content}
+                    </p>
+                    {i === messages.length - 1 && !loading && (
+                      <>
+                        <div style={{ height: 1, background: t.border, margin: "16px 0 14px" }} />
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {config.suggestedQuestions.slice(0, 2).map((q) => (
+                            <span key={q} className="ebere-followup"
+                              style={{ fontSize: 13, color: hoveredFollowup === q ? t.textPrimary : t.textSecondary, fontFamily: '"Open Runde", sans-serif', lineHeight: 1.5, display: "flex", alignItems: "flex-start", gap: 7 }}
+                              onMouseEnter={() => setHoveredFollowup(q)}
+                              onMouseLeave={() => setHoveredFollowup(null)}
+                              onClick={() => sendMessage(q)}
+                            >
+                              <FollowUpArrow color={hoveredFollowup === q ? CTA : t.textHint} />
+                              {q}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -310,49 +324,48 @@ export default function EbereLLMPanel({
           </div>
         ))}
 
-        {/* Loading */}
-        {loading && (
-          <div className="ebere-msg" style={{ marginBottom: 20 }}>
-            <p style={{ color: t.textHint, fontFamily: '"Geist Mono", monospace', fontSize: 13, margin: 0 }}>thinking...</p>
-          </div>
-        )}
+        {/* Typing indicator */}
+        {loading && <div className="ebere-msg"><TypingDots /></div>}
 
         <div ref={chatEndRef} />
       </div>
 
       {/* Input bar */}
-      <div style={{ height: 56, display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: t.bgPanel, borderTop: `1px solid ${t.border}`, flexShrink: 0 }}>
-        <textarea
-          rows={1}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={config.inputPlaceholder}
-          style={{ flex: 1, background: "transparent", border: "none", outline: "none", resize: "none", fontFamily: '"Geist Mono", monospace', fontSize: 14, color: t.textPrimary, lineHeight: 1.4, caretColor: t.accent }}
-        />
-        <button
-          onClick={() => sendMessage(input)}
-          disabled={loading}
-          style={{ width: 28, height: 28, borderRadius: 8, background: t.accent, border: "none", color: "#fff", fontSize: 14, cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: loading ? 0.5 : 1, flexShrink: 0 }}
-        >↑</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: t.bgPanel, borderTop: `1px solid ${t.border}`, flexShrink: 0 }}>
+        <div style={{
+          flex: 1, display: "flex", alignItems: "center", gap: 6,
+          background: t.bgElevated,
+          border: `1px solid ${inputFocused ? t.borderFocus : t.border}`,
+          borderRadius: 12, padding: "8px 8px 8px 14px",
+          transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+          boxShadow: inputFocused ? `0 0 0 3px ${colorScheme === "dark" ? "rgba(46,158,201,0.1)" : "rgba(46,158,201,0.08)"}` : "none",
+        }}>
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            placeholder={config.inputPlaceholder}
+            style={{ flex: 1, background: "transparent", border: "none", outline: "none", resize: "none", fontFamily: '"Geist Mono", monospace', fontSize: 13, color: t.textPrimary, lineHeight: "20px", caretColor: CTA, minHeight: 20, maxHeight: 88, overflowY: "auto", padding: 0 }}
+          />
+          <button
+            onClick={() => sendMessage(input)}
+            disabled={!canSend}
+            title="Send"
+            style={{ width: 28, height: 28, borderRadius: 8, background: canSend ? CTA : "transparent", border: "none", color: canSend ? "#fff" : t.textHint, cursor: canSend ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s ease, color 0.15s ease" }}
+          >
+            <ArrowIcon size={13} />
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
-// ── Framer property controls ──────────────────────────────────────────────
-
 addPropertyControls(EbereLLMPanel, {
-  colorScheme: {
-    type: ControlType.Enum,
-    title: "Color Scheme",
-    options: ["dark", "light"],
-    optionTitles: ["Dark", "Light"],
-    defaultValue: "dark",
-  },
-  isOpen: {
-    type: ControlType.Boolean,
-    title: "Open",
-    defaultValue: true,
-  },
+  colorScheme: { type: ControlType.Enum, title: "Color Scheme", options: ["dark", "light"], optionTitles: ["Dark", "Light"], defaultValue: "dark" },
+  isOpen: { type: ControlType.Boolean, title: "Open", defaultValue: true },
 })
