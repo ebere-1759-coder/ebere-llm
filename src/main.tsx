@@ -116,6 +116,7 @@ function App() {
           colorScheme={colorScheme}
           isOpen={mobileOpen}
           onClose={() => setMobileOpen(false)}
+          width={390}
         />
       )}
     </div>

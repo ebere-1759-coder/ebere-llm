@@ -16,6 +16,7 @@ interface EbereLLMMobileProps {
   colorScheme: "dark" | "light";
   isOpen?: boolean;
   onClose?: () => void;
+  width?: number; // override viewport width (useful for preview)
 }
 
 // ── Design tokens ─────────────────────────────────────────────────────────
@@ -161,6 +162,7 @@ export default function EbereLLMMobile({
   colorScheme = "dark",
   isOpen = true,
   onClose,
+  width: widthOverride,
 }: EbereLLMMobileProps) {
   const t = tokens[colorScheme];
   const [messages, setMessages] = useState<Message[]>([]);
@@ -172,8 +174,9 @@ export default function EbereLLMMobile({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const viewportWidth = useViewportWidth();
 
-  const isMobileNarrow = viewportWidth <= 810;
-  const panelWidth = isMobileNarrow ? viewportWidth : Math.min(viewportWidth, 810);
+  const resolvedWidth = widthOverride ?? viewportWidth;
+  const isMobileNarrow = resolvedWidth <= 810;
+  const panelWidth = isMobileNarrow ? resolvedWidth : Math.min(resolvedWidth, 810);
 
   useEffect(() => { injectStyles(); }, []);
 
