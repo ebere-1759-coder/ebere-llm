@@ -1,6 +1,6 @@
 "use client"
 
-import { addPropertyControls, ControlType, useColorScheme } from "framer"
+import { addPropertyControls, ControlType } from "framer"
 import React, { useState, useRef, useEffect, useCallback } from "react"
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -163,9 +163,7 @@ function injectStyles() {
   document.head.appendChild(style)
 }
 
-export default function EbereLLMPanel({ colorScheme: colorSchemeProp = "dark", isOpen = true, onClose }: EbereLLMPanelProps) {
-  const { colorScheme: siteScheme } = useColorScheme()
-  const colorScheme = (siteScheme === "dark" || siteScheme === "light" ? siteScheme : colorSchemeProp)
+export default function EbereLLMPanel({ colorScheme = "dark", isOpen = true, onClose }: EbereLLMPanelProps) {
   const t = tokens[colorScheme]
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
