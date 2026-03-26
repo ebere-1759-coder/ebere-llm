@@ -69,6 +69,16 @@ function ArrowIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+// ── Follow-up arrow icon ───────────────────────────────────────────────────
+
+function FollowUpArrow({ color }: { color: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill={color} viewBox="0 0 256 256" style={{ flexShrink: 0, marginTop: 2 }}>
+      <path d="M221.66,181.66l-48,48a8,8,0,0,1-11.32-11.32L196.69,184H72a8,8,0,0,1-8-8V32a8,8,0,0,1,16,0V168H196.69l-34.35-34.34a8,8,0,0,1,11.32-11.32l48,48A8,8,0,0,1,221.66,181.66Z" />
+    </svg>
+  );
+}
+
 // ── Info icon ──────────────────────────────────────────────────────────────
 
 function InfoIcon({ color }: { color: string }) {
@@ -367,19 +377,7 @@ export default function EbereLLMMobile({
               >
                 {config.greeting}
               </p>
-              <p
-                style={{
-                  fontFamily: '"Geist Mono", monospace',
-                  fontSize: 10,
-                  color: t.textHint,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  margin: "0 0 28px 0",
-                }}
-              >
-                Ask anything
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 4 }}>
                 {config.suggestedQuestions.map((q) => (
                   <span
                     key={q}
@@ -388,9 +386,10 @@ export default function EbereLLMMobile({
                       fontSize: 15,
                       color: hoveredFollowup === q ? t.textPrimary : t.textSecondary,
                       fontFamily: '"Open Runde", sans-serif',
-                      padding: "3px 0",
-                      display: "block",
                       lineHeight: 1.5,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
                     }}
                     onMouseEnter={() => setHoveredFollowup(q)}
                     onMouseLeave={() => setHoveredFollowup(null)}
@@ -398,9 +397,7 @@ export default function EbereLLMMobile({
                     onTouchEnd={() => setHoveredFollowup(null)}
                     onClick={() => sendMessage(q)}
                   >
-                    <span style={{ color: hoveredFollowup === q ? CTA : t.textHint, marginRight: 3 }}>
-                      {config.followUpPrefix}
-                    </span>
+                    <FollowUpArrow color={hoveredFollowup === q ? CTA : t.textHint} />
                     {q}
                   </span>
                 ))}
@@ -476,9 +473,10 @@ export default function EbereLLMMobile({
                                   fontSize: 15,
                                   color: hoveredFollowup === q ? t.textPrimary : t.textSecondary,
                                   fontFamily: '"Open Runde", sans-serif',
-                                  padding: "3px 0",
-                                  display: "block",
                                   lineHeight: 1.5,
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 8,
                                 }}
                                 onMouseEnter={() => setHoveredFollowup(q)}
                                 onMouseLeave={() => setHoveredFollowup(null)}
@@ -486,9 +484,7 @@ export default function EbereLLMMobile({
                                 onTouchEnd={() => setHoveredFollowup(null)}
                                 onClick={() => sendMessage(q)}
                               >
-                                <span style={{ color: hoveredFollowup === q ? CTA : t.textHint, marginRight: 3 }}>
-                                  {config.followUpPrefix}
-                                </span>
+                                <FollowUpArrow color={hoveredFollowup === q ? CTA : t.textHint} />
                                 {q}
                               </span>
                             ))}
@@ -516,7 +512,7 @@ export default function EbereLLMMobile({
         <div
           style={{
             display: "flex",
-            alignItems: "flex-end",
+            alignItems: "center",
             gap: 10,
             padding: "10px 14px",
             paddingBottom: "max(10px, env(safe-area-inset-bottom))",
@@ -529,7 +525,7 @@ export default function EbereLLMMobile({
             style={{
               flex: 1,
               display: "flex",
-              alignItems: "flex-end",
+              alignItems: "center",
               gap: 8,
               background: t.bgElevated,
               border: `1px solid ${inputFocused ? t.borderFocus : t.border}`,
@@ -576,18 +572,15 @@ export default function EbereLLMMobile({
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: CTA,
+                background: canSend ? CTA : "transparent",
                 border: "none",
-                color: "#fff",
+                color: canSend ? "#fff" : t.textHint,
                 cursor: canSend ? "pointer" : "default",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: canSend ? 1 : 0.28,
                 flexShrink: 0,
-                transition: "opacity 0.15s ease, transform 0.1s ease",
-                transform: canSend ? "scale(1)" : "scale(0.93)",
-                alignSelf: "flex-end",
+                transition: "background 0.15s ease, color 0.15s ease",
               }}
             >
               <ArrowIcon size={16} />
