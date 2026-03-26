@@ -9,6 +9,7 @@ import { config } from "./ebereLLMConfig";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  isError?: boolean;
 }
 
 interface EbereLLMMobileProps {
@@ -19,38 +20,77 @@ interface EbereLLMMobileProps {
 
 // ── Design tokens ─────────────────────────────────────────────────────────
 
+const CTA = "#2E9EC9";
+
 const tokens = {
   dark: {
     bgPage: "#121212",
     bgPanel: "#171717",
     bgElevated: "#1e1e1e",
-    bgCard: "#2b2b2b",
+    bgCard: "#242424",
     textPrimary: "#ffffff",
     textSecondary: "#9e9e9e",
-    textHint: "#525252",
-    accent: "rgb(158, 158, 255)",
+    textHint: "#464646",
     accentGreen: "rgb(25, 230, 114)",
-    border: "rgba(255, 255, 255, 0.08)",
-    avatarGlow: "rgba(158, 158, 255, 0.25)",
-    orbColor: "rgba(158, 158, 255, 0.5)",
-    overlay: "rgba(0, 0, 0, 0.6)",
+    border: "rgba(255, 255, 255, 0.07)",
+    borderFocus: "rgba(46,158,201,0.5)",
+    orbColor: "rgba(46,158,201,0.35)",
+    overlay: "rgba(0, 0, 0, 0.65)",
+    errorBg: "rgba(255, 80, 80, 0.07)",
+    errorText: "#ff8f8f",
   },
   light: {
-    bgPage: "#f7f7f7",
+    bgPage: "#f4f4f4",
     bgPanel: "#ffffff",
-    bgElevated: "#f0f0f0",
-    bgCard: "#e8e8e8",
-    textPrimary: "#000000",
+    bgElevated: "#efefef",
+    bgCard: "#e6e6e6",
+    textPrimary: "#0a0a0a",
     textSecondary: "#6e6e6e",
-    textHint: "#9e9e9e",
-    accent: "rgb(0, 0, 238)",
+    textHint: "#b0b0b0",
     accentGreen: "rgb(22, 191, 94)",
     border: "rgba(0, 0, 0, 0.08)",
-    avatarGlow: "rgba(0, 0, 238, 0.2)",
-    orbColor: "rgba(0, 0, 238, 0.5)",
-    overlay: "rgba(0, 0, 0, 0.3)",
+    borderFocus: "rgba(46,158,201,0.6)",
+    orbColor: "rgba(46,158,201,0.2)",
+    overlay: "rgba(0, 0, 0, 0.35)",
+    errorBg: "rgba(220, 50, 50, 0.06)",
+    errorText: "#cc3333",
   },
 };
+
+// ── Arrow icon ─────────────────────────────────────────────────────────────
+
+function ArrowIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+    >
+      <path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" />
+    </svg>
+  );
+}
+
+// ── Typing dots ────────────────────────────────────────────────────────────
+
+function TypingDots({ color }: { color: string }) {
+  const dotStyle: React.CSSProperties = {
+    display: "inline-block",
+    width: 7,
+    height: 7,
+    borderRadius: "50%",
+    background: color,
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0" }}>
+      <span className="ebere-dot-m" style={dotStyle} />
+      <span className="ebere-dot-m ebere-dot-m2" style={dotStyle} />
+      <span className="ebere-dot-m ebere-dot-m3" style={dotStyle} />
+    </div>
+  );
+}
 
 // ── Keyframe injection ────────────────────────────────────────────────────
 
@@ -62,27 +102,35 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    @keyframes eberePulse {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(158,158,255,0.2); }
-      50%       { box-shadow: 0 0 0 3px rgba(158,158,255,0.4); }
+    @keyframes eberePulseM {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(46,158,201,0.2); }
+      50%       { box-shadow: 0 0 0 3px rgba(46,158,201,0.45); }
     }
-    @keyframes eberePulseLight {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(0,0,238,0.1); }
-      50%       { box-shadow: 0 0 0 3px rgba(0,0,238,0.25); }
-    }
-    @keyframes ebereFloat {
+    @keyframes ebereFloatM {
       0%   { transform: translate(0px, 0px); }
       25%  { transform: translate(6px, -8px); }
       50%  { transform: translate(-4px, -14px); }
       75%  { transform: translate(-8px, -6px); }
       100% { transform: translate(0px, 0px); }
     }
-    @keyframes ebereFadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+    @keyframes ebereFadeInM {
+      from { opacity: 0; transform: translateY(8px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .ebere-msg-m { animation: ebereFadeIn 0.25s ease forwards; }
-    .ebere-followup-m { transition: color 0.2s ease; cursor: pointer; }
+    @keyframes ebereDotM {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.25; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+    .ebere-msg-m { animation: ebereFadeInM 0.28s ease forwards; }
+    .ebere-followup-m {
+      transition: color 0.15s ease;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .ebere-dot-m { animation: ebereDotM 1.3s ease-in-out infinite; }
+    .ebere-dot-m2 { animation-delay: 0.18s; }
+    .ebere-dot-m3 { animation-delay: 0.36s; }
   `;
   document.head.appendChild(style);
 }
@@ -112,12 +160,12 @@ export default function EbereLLMMobile({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const [hoveredFollowup, setHoveredFollowup] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const viewportWidth = useViewportWidth();
 
-  // Clamp panel width between 390 and 810; full-width on mobile
   const isMobileNarrow = viewportWidth <= 810;
   const panelWidth = isMobileNarrow ? viewportWidth : Math.min(viewportWidth, 810);
 
@@ -132,9 +180,7 @@ export default function EbereLLMMobile({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    const lineHeight = 20;
-    const maxHeight = lineHeight * 5;
-    el.style.height = Math.min(el.scrollHeight, maxHeight) + "px";
+    el.style.height = Math.min(el.scrollHeight, 100) + "px";
   }, [input]);
 
   const sendMessage = useCallback(async (text: string) => {
@@ -158,13 +204,19 @@ export default function EbereLLMMobile({
         }),
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const data = await res.json();
       const reply = data.text ?? "Sorry, I couldn't get a response.";
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Something went wrong. Please try again." },
+        {
+          role: "assistant",
+          content: "Something went wrong. Please try again.",
+          isError: true,
+        },
       ]);
     } finally {
       setLoading(false);
@@ -172,7 +224,6 @@ export default function EbereLLMMobile({
   }, [messages, loading]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // On mobile, Enter adds newline; use send button to submit
     if (e.key === "Enter" && !e.shiftKey && !isMobileNarrow) {
       e.preventDefault();
       sendMessage(input);
@@ -185,8 +236,9 @@ export default function EbereLLMMobile({
   };
 
   const isEmpty = messages.length === 0;
+  const canSend = input.trim().length > 0 && !loading;
 
-  // ── Panel: full-screen bottom sheet on mobile ───────────────────────────
+  // ── Overlay ────────────────────────────────────────────────────────────
 
   const overlayStyle: React.CSSProperties = {
     position: "fixed",
@@ -198,15 +250,16 @@ export default function EbereLLMMobile({
     transition: "opacity 0.3s ease",
   };
 
+  // ── Panel ──────────────────────────────────────────────────────────────
+
   const panelStyle: React.CSSProperties = {
     position: "fixed",
     bottom: 0,
     left: "50%",
     transform: isOpen
-      ? `translateX(-50%) translateY(0)`
-      : `translateX(-50%) translateY(100%)`,
+      ? "translateX(-50%) translateY(0)"
+      : "translateX(-50%) translateY(100%)",
     width: panelWidth,
-    // Leave a small gap at the top on wider phones/tablets (810px)
     height: isMobileNarrow && panelWidth <= 430 ? "100dvh" : "92dvh",
     maxHeight: "100dvh",
     display: "flex",
@@ -215,10 +268,22 @@ export default function EbereLLMMobile({
     background: t.bgPanel,
     borderRadius: panelWidth <= 430 ? "0" : "20px 20px 0 0",
     borderTop: panelWidth <= 430 ? "none" : `1px solid ${t.border}`,
-    boxShadow: "0 -8px 40px rgba(0,0,0,0.3)",
-    transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
+    boxShadow: "0 -12px 48px rgba(0,0,0,0.35)",
+    transition: "transform 0.38s cubic-bezier(0.32, 0.72, 0, 1)",
     zIndex: 9999,
     overflow: "hidden",
+  };
+
+  // ── Drag handle ────────────────────────────────────────────────────────
+
+  const dragHandleStyle: React.CSSProperties = {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    background: t.border,
+    margin: "10px auto 0",
+    flexShrink: 0,
+    display: panelWidth <= 430 ? "none" : "block",
   };
 
   // ── Header ─────────────────────────────────────────────────────────────
@@ -235,43 +300,28 @@ export default function EbereLLMMobile({
   };
 
   const avatarStyle: React.CSSProperties = {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     borderRadius: "50%",
     objectFit: "cover",
-    animation:
-      colorScheme === "dark"
-        ? "eberePulse 3s ease-in-out infinite"
-        : "eberePulseLight 3s ease-in-out infinite",
+    animation: "eberePulseM 3s ease-in-out infinite",
   };
 
   const iconBtnStyle: React.CSSProperties = {
     background: "none",
     border: "none",
     color: t.textHint,
-    fontSize: 22,
+    fontSize: 20,
     cursor: "pointer",
     padding: 8,
     lineHeight: 1,
     fontFamily: "inherit",
-    // Larger touch target
     minWidth: 44,
     minHeight: 44,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-  };
-
-  // ── Drag handle ────────────────────────────────────────────────────────
-
-  const dragHandleStyle: React.CSSProperties = {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    background: t.border,
-    margin: "10px auto 0",
-    flexShrink: 0,
-    display: panelWidth <= 430 ? "none" : "block",
+    borderRadius: 8,
   };
 
   // ── Chat area ──────────────────────────────────────────────────────────
@@ -279,13 +329,11 @@ export default function EbereLLMMobile({
   const chatAreaStyle: React.CSSProperties = {
     flex: 1,
     overflowY: "auto",
-    padding: "20px 20px 8px",
+    padding: "24px 20px 12px",
     background: t.bgPage,
     display: "flex",
     flexDirection: "column",
-    gap: 0,
     position: "relative",
-    // Smooth scroll on iOS
     WebkitOverflowScrolling: "touch",
   };
 
@@ -295,57 +343,71 @@ export default function EbereLLMMobile({
     display: "flex",
     alignItems: "flex-end",
     gap: 10,
-    padding: "12px 16px",
-    paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+    padding: "10px 14px",
+    paddingBottom: "max(10px, env(safe-area-inset-bottom))",
     background: t.bgPanel,
     borderTop: `1px solid ${t.border}`,
     flexShrink: 0,
   };
 
+  const inputWrapStyle: React.CSSProperties = {
+    flex: 1,
+    display: "flex",
+    alignItems: "flex-end",
+    gap: 8,
+    background: t.bgElevated,
+    border: `1px solid ${inputFocused ? t.borderFocus : t.border}`,
+    borderRadius: 14,
+    padding: "10px 10px 10px 14px",
+    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+    boxShadow: inputFocused
+      ? `0 0 0 3px ${colorScheme === "dark" ? "rgba(46,158,201,0.12)" : "rgba(46,158,201,0.1)"}`
+      : "none",
+  };
+
   const textareaStyle: React.CSSProperties = {
     flex: 1,
-    background: t.bgElevated,
-    border: `1px solid ${t.border}`,
-    borderRadius: 12,
+    background: "transparent",
+    border: "none",
     outline: "none",
     resize: "none",
     fontFamily: '"Geist Mono", monospace',
     fontSize: 15,
     color: t.textPrimary,
-    lineHeight: "20px",
-    caretColor: t.accent,
-    padding: "10px 14px",
-    minHeight: 44,
+    lineHeight: "22px",
+    caretColor: CTA,
+    minHeight: 22,
     maxHeight: 100,
     overflowY: "auto",
-    // Prevent iOS zoom on focus (font-size >= 16 avoids zoom)
+    padding: 0,
     WebkitTextSizeAdjust: "100%",
   };
 
   const sendBtnStyle: React.CSSProperties = {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    background: t.accent,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    background: CTA,
     border: "none",
     color: "#fff",
-    fontSize: 18,
-    cursor: loading ? "not-allowed" : "pointer",
+    cursor: canSend ? "pointer" : "default",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    opacity: loading || !input.trim() ? 0.4 : 1,
+    opacity: canSend ? 1 : 0.3,
     flexShrink: 0,
-    transition: "opacity 0.15s ease",
+    transition: "opacity 0.15s ease, transform 0.1s ease",
+    transform: canSend ? "scale(1)" : "scale(0.95)",
+    alignSelf: "flex-end",
   };
 
   return (
     <>
-      {/* Overlay backdrop */}
+      {/* Backdrop */}
       <div style={overlayStyle} onClick={onClose} />
 
       <div style={panelStyle}>
-        {/* Drag handle pill (tablet only) */}
+        {/* Drag handle */}
         <div style={dragHandleStyle} />
 
         {/* ── Header ── */}
@@ -362,19 +424,18 @@ export default function EbereLLMMobile({
             <span
               style={{
                 fontFamily: '"Geist Mono", monospace',
-                fontSize: 12,
-                letterSpacing: "0.08em",
+                fontSize: 11,
+                letterSpacing: "0.1em",
                 color: t.textSecondary,
                 textTransform: "uppercase",
               }}
             >
               {config.panelTitle}
             </span>
-            {/* Online dot */}
             <span
               style={{
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 borderRadius: "50%",
                 background: t.accentGreen,
                 display: "inline-block",
@@ -382,7 +443,7 @@ export default function EbereLLMMobile({
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <button style={iconBtnStyle} title="Reset" onClick={reset}>
+            <button style={iconBtnStyle} title="New chat" onClick={reset}>
               ↺
             </button>
             {onClose && (
@@ -401,17 +462,17 @@ export default function EbereLLMMobile({
               position: "absolute",
               top: 24,
               right: 24,
-              width: 48,
-              height: 48,
+              width: 56,
+              height: 56,
               borderRadius: "50%",
               background: t.orbColor,
-              filter: "blur(16px)",
+              filter: "blur(20px)",
               pointerEvents: "none",
-              animation: "ebereFloat 8s ease-in-out infinite",
+              animation: "ebereFloatM 9s ease-in-out infinite",
             }}
           />
 
-          {/* Empty state */}
+          {/* ── Empty state ── */}
           {isEmpty && (
             <div
               style={{
@@ -426,15 +487,28 @@ export default function EbereLLMMobile({
                 style={{
                   fontFamily: '"Open Runde", sans-serif',
                   fontSize: 22,
-                  fontWeight: 500,
+                  fontWeight: 600,
                   letterSpacing: "-0.5px",
                   color: t.textPrimary,
-                  margin: "0 0 20px 0",
+                  margin: "0 0 6px 0",
+                  lineHeight: 1.2,
                 }}
               >
                 {config.greeting}
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <p
+                style={{
+                  fontFamily: '"Geist Mono", monospace',
+                  fontSize: 11,
+                  color: t.textHint,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  margin: "0 0 24px 0",
+                }}
+              >
+                Ask anything
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {config.suggestedQuestions.map((q) => (
                   <span
                     key={q}
@@ -443,9 +517,9 @@ export default function EbereLLMMobile({
                       fontSize: 15,
                       color: hoveredFollowup === q ? t.textPrimary : t.textSecondary,
                       fontFamily: '"Open Runde", sans-serif',
-                      // Larger touch target
                       padding: "4px 0",
                       display: "block",
+                      lineHeight: 1.5,
                     }}
                     onMouseEnter={() => setHoveredFollowup(q)}
                     onMouseLeave={() => setHoveredFollowup(null)}
@@ -453,7 +527,9 @@ export default function EbereLLMMobile({
                     onTouchEnd={() => setHoveredFollowup(null)}
                     onClick={() => sendMessage(q)}
                   >
-                    <span style={{ color: t.textHint }}>{config.followUpPrefix}</span>
+                    <span style={{ color: hoveredFollowup === q ? CTA : t.textHint, marginRight: 2 }}>
+                      {config.followUpPrefix}
+                    </span>
                     {q}
                   </span>
                 ))}
@@ -461,7 +537,7 @@ export default function EbereLLMMobile({
             </div>
           )}
 
-          {/* Messages */}
+          {/* ── Messages ── */}
           {messages.map((msg, i) => (
             <div key={i} className="ebere-msg-m" style={{ marginBottom: 20 }}>
               {msg.role === "user" ? (
@@ -469,13 +545,13 @@ export default function EbereLLMMobile({
                   <div
                     style={{
                       background: t.bgCard,
-                      borderRadius: 16,
-                      padding: "10px 16px",
+                      borderRadius: "16px 16px 4px 16px",
+                      padding: "11px 16px",
                       color: t.textPrimary,
                       fontFamily: '"Open Runde", sans-serif',
                       fontSize: 15,
                       maxWidth: "82%",
-                      lineHeight: 1.5,
+                      lineHeight: 1.55,
                     }}
                   >
                     {msg.content}
@@ -483,50 +559,76 @@ export default function EbereLLMMobile({
                 </div>
               ) : (
                 <div>
-                  <p
-                    style={{
-                      color: t.textSecondary,
-                      fontFamily: '"Open Runde", sans-serif',
-                      fontSize: 16,
-                      lineHeight: 1.65,
-                      margin: "0 0 12px 0",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {msg.content}
-                  </p>
-                  {i === messages.length - 1 && !loading && (
-                    <>
-                      <div
+                  {msg.isError ? (
+                    <div
+                      style={{
+                        background: t.errorBg,
+                        border: `1px solid ${colorScheme === "dark" ? "rgba(255,80,80,0.15)" : "rgba(200,50,50,0.12)"}`,
+                        borderRadius: 12,
+                        padding: "12px 16px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
+                      <p
                         style={{
-                          height: 1,
-                          background: t.border,
-                          margin: "16px 0",
+                          color: t.errorText,
+                          fontFamily: '"Open Runde", sans-serif',
+                          fontSize: 14,
+                          margin: 0,
+                          lineHeight: 1.5,
                         }}
-                      />
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {config.suggestedQuestions.slice(0, 2).map((q) => (
-                          <span
-                            key={q}
-                            className="ebere-followup-m"
-                            style={{
-                              fontSize: 15,
-                              color: hoveredFollowup === q ? t.textPrimary : t.textSecondary,
-                              fontFamily: '"Open Runde", sans-serif',
-                              padding: "4px 0",
-                              display: "block",
-                            }}
-                            onMouseEnter={() => setHoveredFollowup(q)}
-                            onMouseLeave={() => setHoveredFollowup(null)}
-                            onTouchStart={() => setHoveredFollowup(q)}
-                            onTouchEnd={() => setHoveredFollowup(null)}
-                            onClick={() => sendMessage(q)}
-                          >
-                            <span style={{ color: t.textHint }}>{config.followUpPrefix}</span>
-                            {q}
-                          </span>
-                        ))}
-                      </div>
+                      >
+                        {msg.content}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p
+                        style={{
+                          color: t.textSecondary,
+                          fontFamily: '"Open Runde", sans-serif',
+                          fontSize: 16,
+                          lineHeight: 1.7,
+                          margin: "0 0 12px 0",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {msg.content}
+                      </p>
+                      {i === messages.length - 1 && !loading && (
+                        <>
+                          <div style={{ height: 1, background: t.border, margin: "14px 0" }} />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            {config.suggestedQuestions.slice(0, 2).map((q) => (
+                              <span
+                                key={q}
+                                className="ebere-followup-m"
+                                style={{
+                                  fontSize: 15,
+                                  color: hoveredFollowup === q ? t.textPrimary : t.textSecondary,
+                                  fontFamily: '"Open Runde", sans-serif',
+                                  padding: "4px 0",
+                                  display: "block",
+                                  lineHeight: 1.5,
+                                }}
+                                onMouseEnter={() => setHoveredFollowup(q)}
+                                onMouseLeave={() => setHoveredFollowup(null)}
+                                onTouchStart={() => setHoveredFollowup(q)}
+                                onTouchEnd={() => setHoveredFollowup(null)}
+                                onClick={() => sendMessage(q)}
+                              >
+                                <span style={{ color: hoveredFollowup === q ? CTA : t.textHint, marginRight: 2 }}>
+                                  {config.followUpPrefix}
+                                </span>
+                                {q}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -534,19 +636,10 @@ export default function EbereLLMMobile({
             </div>
           ))}
 
-          {/* Loading indicator */}
+          {/* ── Typing indicator ── */}
           {loading && (
             <div className="ebere-msg-m" style={{ marginBottom: 20 }}>
-              <p
-                style={{
-                  color: t.textHint,
-                  fontFamily: '"Geist Mono", monospace',
-                  fontSize: 13,
-                  margin: 0,
-                }}
-              >
-                thinking...
-              </p>
+              <TypingDots color={t.textHint} />
             </div>
           )}
 
@@ -555,23 +648,27 @@ export default function EbereLLMMobile({
 
         {/* ── Input bar ── */}
         <div style={inputBarStyle}>
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={config.inputPlaceholder}
-            style={textareaStyle}
-          />
-          <button
-            style={sendBtnStyle}
-            onClick={() => sendMessage(input)}
-            disabled={loading || !input.trim()}
-            title="Send"
-          >
-            ↑
-          </button>
+          <div style={inputWrapStyle}>
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              placeholder={config.inputPlaceholder}
+              style={textareaStyle}
+            />
+            <button
+              style={sendBtnStyle}
+              onClick={() => sendMessage(input)}
+              disabled={!canSend}
+              title="Send"
+            >
+              <ArrowIcon size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </>

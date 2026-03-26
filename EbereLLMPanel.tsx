@@ -9,6 +9,7 @@ import { config } from "./ebereLLMConfig";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  isError?: boolean;
 }
 
 interface EbereLLMPanelProps {
@@ -19,36 +20,75 @@ interface EbereLLMPanelProps {
 
 // ── Design tokens ─────────────────────────────────────────────────────────
 
+const CTA = "#2E9EC9";
+
 const tokens = {
   dark: {
     bgPage: "#121212",
     bgPanel: "#171717",
     bgElevated: "#1e1e1e",
-    bgCard: "#2b2b2b",
+    bgCard: "#242424",
     textPrimary: "#ffffff",
     textSecondary: "#9e9e9e",
-    textHint: "#525252",
-    accent: "rgb(158, 158, 255)",
+    textHint: "#464646",
     accentGreen: "rgb(25, 230, 114)",
-    border: "rgba(255, 255, 255, 0.08)",
-    avatarGlow: "rgba(158, 158, 255, 0.25)",
-    orbColor: "rgba(158, 158, 255, 0.5)",
+    border: "rgba(255, 255, 255, 0.07)",
+    borderFocus: `rgba(46,158,201,0.5)`,
+    orbColor: "rgba(46,158,201,0.35)",
+    errorBg: "rgba(255, 80, 80, 0.07)",
+    errorText: "#ff8f8f",
   },
   light: {
-    bgPage: "#f7f7f7",
+    bgPage: "#f4f4f4",
     bgPanel: "#ffffff",
-    bgElevated: "#f0f0f0",
-    bgCard: "#e8e8e8",
-    textPrimary: "#000000",
+    bgElevated: "#efefef",
+    bgCard: "#e6e6e6",
+    textPrimary: "#0a0a0a",
     textSecondary: "#6e6e6e",
-    textHint: "#9e9e9e",
-    accent: "rgb(0, 0, 238)",
+    textHint: "#b0b0b0",
     accentGreen: "rgb(22, 191, 94)",
     border: "rgba(0, 0, 0, 0.08)",
-    avatarGlow: "rgba(0, 0, 238, 0.2)",
-    orbColor: "rgba(0, 0, 238, 0.5)",
+    borderFocus: `rgba(46,158,201,0.6)`,
+    orbColor: "rgba(46,158,201,0.2)",
+    errorBg: "rgba(220, 50, 50, 0.06)",
+    errorText: "#cc3333",
   },
 };
+
+// ── Arrow icon ─────────────────────────────────────────────────────────────
+
+function ArrowIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      fill="currentColor"
+      viewBox="0 0 256 256"
+    >
+      <path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z" />
+    </svg>
+  );
+}
+
+// ── Typing dots ────────────────────────────────────────────────────────────
+
+function TypingDots({ color }: { color: string }) {
+  const dotStyle: React.CSSProperties = {
+    display: "inline-block",
+    width: 6,
+    height: 6,
+    borderRadius: "50%",
+    background: color,
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 0" }}>
+      <span className="ebere-dot" style={dotStyle} />
+      <span className="ebere-dot ebere-dot-2" style={dotStyle} />
+      <span className="ebere-dot ebere-dot-3" style={dotStyle} />
+    </div>
+  );
+}
 
 // ── Keyframe injection ────────────────────────────────────────────────────
 
@@ -61,12 +101,8 @@ function injectStyles() {
   style.id = STYLE_ID;
   style.textContent = `
     @keyframes eberePulse {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(158,158,255,0.2); }
-      50%       { box-shadow: 0 0 0 3px rgba(158,158,255,0.4); }
-    }
-    @keyframes eberePulseLight {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(0,0,238,0.1); }
-      50%       { box-shadow: 0 0 0 3px rgba(0,0,238,0.25); }
+      0%, 100% { box-shadow: 0 0 0 3px rgba(46,158,201,0.2); }
+      50%       { box-shadow: 0 0 0 3px rgba(46,158,201,0.45); }
     }
     @keyframes ebereFloat {
       0%   { transform: translate(0px, 0px); }
@@ -76,11 +112,22 @@ function injectStyles() {
       100% { transform: translate(0px, 0px); }
     }
     @keyframes ebereFadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(8px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .ebere-msg { animation: ebereFadeIn 0.25s ease forwards; }
-    .ebere-followup { transition: color 0.2s ease; cursor: pointer; }
+    @keyframes ebereDot {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.25; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+    .ebere-msg { animation: ebereFadeIn 0.28s ease forwards; }
+    .ebere-followup {
+      transition: color 0.15s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+    .ebere-dot { animation: ebereDot 1.3s ease-in-out infinite; }
+    .ebere-dot-2 { animation-delay: 0.18s; }
+    .ebere-dot-3 { animation-delay: 0.36s; }
   `;
   document.head.appendChild(style);
 }
@@ -96,6 +143,7 @@ export default function EbereLLMPanel({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const [hoveredFollowup, setHoveredFollowup] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -106,6 +154,14 @@ export default function EbereLLMPanel({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // Auto-grow textarea up to 4 lines
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 88) + "px";
+  }, [input]);
+
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
@@ -115,7 +171,6 @@ export default function EbereLLMPanel({
     setInput("");
     setLoading(true);
 
-    // Keep only the last 6 messages to limit token usage
     const trimmedHistory = newMessages.slice(-6);
 
     try {
@@ -128,13 +183,19 @@ export default function EbereLLMPanel({
         }),
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const data = await res.json();
       const reply = data.text ?? "Sorry, I couldn't get a response.";
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Something went wrong. Please try again." },
+        {
+          role: "assistant",
+          content: "Something went wrong. Please try again.",
+          isError: true,
+        },
       ]);
     } finally {
       setLoading(false);
@@ -154,8 +215,9 @@ export default function EbereLLMPanel({
   };
 
   const isEmpty = messages.length === 0;
+  const canSend = input.trim().length > 0 && !loading;
 
-  // ── Panel visibility ───────────────────────────────────────────────────
+  // ── Panel ──────────────────────────────────────────────────────────────
 
   const panelStyle: React.CSSProperties = {
     position: "fixed",
@@ -170,7 +232,7 @@ export default function EbereLLMPanel({
     borderLeft: `1px solid ${t.border}`,
     transform: isOpen ? "translateX(0)" : "translateX(100%)",
     opacity: isOpen ? 1 : 0,
-    transition: "transform 0.3s ease, opacity 0.2s ease",
+    transition: "transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease",
     zIndex: 9999,
     overflow: "hidden",
   };
@@ -178,7 +240,7 @@ export default function EbereLLMPanel({
   // ── Header ─────────────────────────────────────────────────────────────
 
   const headerStyle: React.CSSProperties = {
-    height: 48,
+    height: 52,
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -189,22 +251,27 @@ export default function EbereLLMPanel({
   };
 
   const avatarStyle: React.CSSProperties = {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: "50%",
     objectFit: "cover",
-    animation: colorScheme === "dark" ? "eberePulse 3s ease-in-out infinite" : "eberePulseLight 3s ease-in-out infinite",
+    animation: "eberePulse 3s ease-in-out infinite",
   };
 
   const iconBtnStyle: React.CSSProperties = {
     background: "none",
     border: "none",
     color: t.textHint,
-    fontSize: 18,
+    fontSize: 17,
     cursor: "pointer",
-    padding: 4,
+    padding: 6,
     lineHeight: 1,
     fontFamily: "inherit",
+    borderRadius: 6,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "color 0.15s ease",
   };
 
   // ── Chat area ──────────────────────────────────────────────────────────
@@ -212,7 +279,7 @@ export default function EbereLLMPanel({
   const chatAreaStyle: React.CSSProperties = {
     flex: 1,
     overflowY: "auto",
-    padding: 24,
+    padding: "28px 20px 12px",
     background: t.bgPage,
     display: "flex",
     flexDirection: "column",
@@ -223,14 +290,26 @@ export default function EbereLLMPanel({
   // ── Input bar ──────────────────────────────────────────────────────────
 
   const inputBarStyle: React.CSSProperties = {
-    height: 56,
     display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "12px 16px",
+    alignItems: "flex-end",
+    gap: 8,
+    padding: "10px 12px",
     background: t.bgPanel,
     borderTop: `1px solid ${t.border}`,
     flexShrink: 0,
+  };
+
+  const inputWrapStyle: React.CSSProperties = {
+    flex: 1,
+    display: "flex",
+    alignItems: "flex-end",
+    gap: 6,
+    background: t.bgElevated,
+    border: `1px solid ${inputFocused ? t.borderFocus : t.border}`,
+    borderRadius: 12,
+    padding: "8px 10px 8px 14px",
+    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+    boxShadow: inputFocused ? `0 0 0 3px ${colorScheme === "dark" ? "rgba(46,158,201,0.12)" : "rgba(46,158,201,0.1)"}` : "none",
   };
 
   const textareaStyle: React.CSSProperties = {
@@ -240,27 +319,33 @@ export default function EbereLLMPanel({
     outline: "none",
     resize: "none",
     fontFamily: '"Geist Mono", monospace',
-    fontSize: 14,
+    fontSize: 13,
     color: t.textPrimary,
-    placeholder: config.inputPlaceholder,
-    lineHeight: 1.4,
-    caretColor: t.accent,
+    lineHeight: "20px",
+    caretColor: CTA,
+    minHeight: 20,
+    maxHeight: 88,
+    overflowY: "auto",
+    padding: 0,
   };
 
   const sendBtnStyle: React.CSSProperties = {
     width: 28,
     height: 28,
     borderRadius: 8,
-    background: t.accent,
+    background: CTA,
     border: "none",
     color: "#fff",
-    fontSize: 14,
-    cursor: loading ? "not-allowed" : "pointer",
+    cursor: canSend ? "pointer" : "default",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    opacity: loading ? 0.5 : 1,
+    opacity: canSend ? 1 : 0.3,
     flexShrink: 0,
+    transition: "opacity 0.15s ease, transform 0.1s ease",
+    transform: canSend ? "scale(1)" : "scale(0.95)",
+    alignSelf: "flex-end",
+    marginBottom: 1,
   };
 
   return (
@@ -279,27 +364,26 @@ export default function EbereLLMPanel({
           <span
             style={{
               fontFamily: '"Geist Mono", monospace',
-              fontSize: 12,
-              letterSpacing: "0.08em",
+              fontSize: 11,
+              letterSpacing: "0.1em",
               color: t.textSecondary,
               textTransform: "uppercase",
             }}
           >
             {config.panelTitle}
           </span>
-          {/* Online dot */}
           <span
             style={{
-              width: 7,
-              height: 7,
+              width: 6,
+              height: 6,
               borderRadius: "50%",
               background: t.accentGreen,
               display: "inline-block",
             }}
           />
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button style={iconBtnStyle} title="Reset" onClick={reset}>↺</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button style={iconBtnStyle} title="New chat" onClick={reset}>↺</button>
           {onClose && (
             <button style={iconBtnStyle} title="Close" onClick={onClose}>×</button>
           )}
@@ -312,48 +396,64 @@ export default function EbereLLMPanel({
         <div
           style={{
             position: "absolute",
-            top: 32,
-            right: 32,
-            width: 40,
-            height: 40,
+            top: 28,
+            right: 28,
+            width: 56,
+            height: 56,
             borderRadius: "50%",
             background: t.orbColor,
-            filter: "blur(14px)",
+            filter: "blur(20px)",
             pointerEvents: "none",
-            animation: "ebereFloat 8s ease-in-out infinite",
+            animation: "ebereFloat 9s ease-in-out infinite",
           }}
         />
 
-        {/* Empty state */}
+        {/* ── Empty state ── */}
         {isEmpty && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <p
               style={{
                 fontFamily: '"Open Runde", sans-serif',
-                fontSize: 24,
-                fontWeight: 500,
-                letterSpacing: "-1px",
+                fontSize: 22,
+                fontWeight: 600,
+                letterSpacing: "-0.5px",
                 color: t.textPrimary,
-                margin: "0 0 20px 0",
+                margin: "0 0 6px 0",
+                lineHeight: 1.2,
               }}
             >
               {config.greeting}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <p
+              style={{
+                fontFamily: '"Geist Mono", monospace',
+                fontSize: 11,
+                color: t.textHint,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                margin: "0 0 24px 0",
+              }}
+            >
+              Ask anything
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {config.suggestedQuestions.map((q) => (
                 <span
                   key={q}
                   className="ebere-followup"
                   style={{
-                    fontSize: 14,
+                    fontSize: 13,
                     color: hoveredFollowup === q ? t.textPrimary : t.textSecondary,
                     fontFamily: '"Open Runde", sans-serif',
+                    lineHeight: 1.5,
                   }}
                   onMouseEnter={() => setHoveredFollowup(q)}
                   onMouseLeave={() => setHoveredFollowup(null)}
                   onClick={() => sendMessage(q)}
                 >
-                  <span style={{ color: t.textHint }}>{config.followUpPrefix}</span>
+                  <span style={{ color: hoveredFollowup === q ? CTA : t.textHint, marginRight: 2 }}>
+                    {config.followUpPrefix}
+                  </span>
                   {q}
                 </span>
               ))}
@@ -361,7 +461,7 @@ export default function EbereLLMPanel({
           </div>
         )}
 
-        {/* Messages */}
+        {/* ── Messages ── */}
         {messages.map((msg, i) => (
           <div key={i} className="ebere-msg" style={{ marginBottom: 20 }}>
             {msg.role === "user" ? (
@@ -369,13 +469,13 @@ export default function EbereLLMPanel({
                 <div
                   style={{
                     background: t.bgCard,
-                    borderRadius: 12,
+                    borderRadius: "14px 14px 4px 14px",
                     padding: "10px 14px",
                     color: t.textPrimary,
                     fontFamily: '"Open Runde", sans-serif',
                     fontSize: 14,
                     maxWidth: "80%",
-                    lineHeight: 1.4,
+                    lineHeight: 1.5,
                   }}
                 >
                   {msg.content}
@@ -383,47 +483,72 @@ export default function EbereLLMPanel({
               </div>
             ) : (
               <div>
-                <p
-                  style={{
-                    color: t.textSecondary,
-                    fontFamily: '"Open Runde", sans-serif',
-                    fontSize: 16,
-                    lineHeight: 1.6,
-                    margin: "0 0 12px 0",
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {msg.content}
-                </p>
-                {/* Divider before follow-ups */}
-                {i === messages.length - 1 && !loading && (
-                  <>
-                    <div
+                {msg.isError ? (
+                  <div
+                    style={{
+                      background: t.errorBg,
+                      border: `1px solid ${colorScheme === "dark" ? "rgba(255,80,80,0.15)" : "rgba(200,50,50,0.12)"}`,
+                      borderRadius: 10,
+                      padding: "10px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>⚠</span>
+                    <p
                       style={{
-                        height: 1,
-                        background: t.border,
-                        margin: "16px 0",
+                        color: t.errorText,
+                        fontFamily: '"Open Runde", sans-serif',
+                        fontSize: 13,
+                        margin: 0,
+                        lineHeight: 1.5,
                       }}
-                    />
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {config.suggestedQuestions.slice(0, 2).map((q) => (
-                        <span
-                          key={q}
-                          className="ebere-followup"
-                          style={{
-                            fontSize: 14,
-                            color: hoveredFollowup === q ? t.textPrimary : t.textSecondary,
-                            fontFamily: '"Open Runde", sans-serif',
-                          }}
-                          onMouseEnter={() => setHoveredFollowup(q)}
-                          onMouseLeave={() => setHoveredFollowup(null)}
-                          onClick={() => sendMessage(q)}
-                        >
-                          <span style={{ color: t.textHint }}>{config.followUpPrefix}</span>
-                          {q}
-                        </span>
-                      ))}
-                    </div>
+                    >
+                      {msg.content}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p
+                      style={{
+                        color: t.textSecondary,
+                        fontFamily: '"Open Runde", sans-serif',
+                        fontSize: 15,
+                        lineHeight: 1.65,
+                        margin: "0 0 12px 0",
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
+                      {msg.content}
+                    </p>
+                    {i === messages.length - 1 && !loading && (
+                      <>
+                        <div style={{ height: 1, background: t.border, margin: "14px 0" }} />
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {config.suggestedQuestions.slice(0, 2).map((q) => (
+                            <span
+                              key={q}
+                              className="ebere-followup"
+                              style={{
+                                fontSize: 13,
+                                color: hoveredFollowup === q ? t.textPrimary : t.textSecondary,
+                                fontFamily: '"Open Runde", sans-serif',
+                                lineHeight: 1.5,
+                              }}
+                              onMouseEnter={() => setHoveredFollowup(q)}
+                              onMouseLeave={() => setHoveredFollowup(null)}
+                              onClick={() => sendMessage(q)}
+                            >
+                              <span style={{ color: hoveredFollowup === q ? CTA : t.textHint, marginRight: 2 }}>
+                                {config.followUpPrefix}
+                              </span>
+                              {q}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -431,19 +556,10 @@ export default function EbereLLMPanel({
           </div>
         ))}
 
-        {/* Loading indicator */}
+        {/* ── Typing indicator ── */}
         {loading && (
           <div className="ebere-msg" style={{ marginBottom: 20 }}>
-            <p
-              style={{
-                color: t.textHint,
-                fontFamily: '"Geist Mono", monospace',
-                fontSize: 13,
-                margin: 0,
-              }}
-            >
-              thinking...
-            </p>
+            <TypingDots color={t.textHint} />
           </div>
         )}
 
@@ -452,23 +568,27 @@ export default function EbereLLMPanel({
 
       {/* ── Input bar ── */}
       <div style={inputBarStyle}>
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={config.inputPlaceholder}
-          style={textareaStyle}
-        />
-        <button
-          style={sendBtnStyle}
-          onClick={() => sendMessage(input)}
-          disabled={loading}
-          title="Send"
-        >
-          ↑
-        </button>
+        <div style={inputWrapStyle}>
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            placeholder={config.inputPlaceholder}
+            style={textareaStyle}
+          />
+          <button
+            style={sendBtnStyle}
+            onClick={() => sendMessage(input)}
+            disabled={!canSend}
+            title="Send"
+          >
+            <ArrowIcon size={13} />
+          </button>
+        </div>
       </div>
     </div>
   );
