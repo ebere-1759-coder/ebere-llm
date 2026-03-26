@@ -1,7 +1,7 @@
 "use client"
 
 import { addPropertyControls, ControlType, useColorScheme } from "framer"
-import { useState, useRef, useEffect, useCallback } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 
 // ─────────────────────────────────────────────────────────────────────────
 // ✏️  EDIT THIS SECTION ONLY
